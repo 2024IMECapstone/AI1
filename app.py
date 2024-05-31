@@ -3,6 +3,7 @@ import librosa
 import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
+import os
 
 app = Flask(__name__)
 
@@ -50,6 +51,33 @@ def process_audio():
             return jsonify({"status": "detected", "class": detected_class, "cryingType" : crying_type}), 200  #여기서 detected_class는 안 보내줘도 되기는 함
         else:
             return jsonify({"status": "not_detected"}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/process_video', methods=['POST'])
+def process_video():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
+    try:
+        # 파일을 저장 임시 경로 생성
+        temp_file_path = os.path.join("C:/Capstone/temp_videos", file.filename)
+        os.makedirs(os.path.dirname(temp_file_path), exist_ok=True)
+        file.save(temp_file_path)
+
+        # 동영상 파일을 처리 및 결과를 반환
+        from inference2 import process_video_file
+        results_summary = process_video_file(temp_file_path)
+
+        # 임시 파일 삭제
+        os.remove(temp_file_path)
+
+        return jsonify({"status": "processed", "results": results_summary}), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
